@@ -11,7 +11,7 @@ RED=$'\033[31m'
 RESET=$'\033[0m'
 
 bar() {
-  local pct=$1 width=10 filled empty out i
+  local pct=$1 width=20 filled empty out i
   filled=$(( (pct * width + 50) / 100 ))
   (( filled > width )) && filled=$width
   (( filled < 0 )) && filled=0
@@ -41,16 +41,16 @@ CTX_SIZE=$(printf '%s' "$input" | jq -r '.context_window.context_window_size // 
 CTX_USED_K=$(( (CTX_USED + 500) / 1000 ))
 CTX_SIZE_K=$(( (CTX_SIZE + 500) / 1000 ))
 
-OUT="$MODEL | $(segment Ctx "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
+OUT="$MODEL | $(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
 
 FIVE_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.five_hour.used_percentage != null then (.rate_limits.five_hour.used_percentage | round) else "" end')
 if [ -n "$FIVE_PCT" ]; then
-  OUT="$OUT | $(segment 5h "$FIVE_PCT")"
+  OUT="$OUT | $(segment "Session (5h)" "$FIVE_PCT")"
 fi
 
 SEVEN_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | round) else "" end')
 if [ -n "$SEVEN_PCT" ]; then
-  OUT="$OUT | $(segment 7d "$SEVEN_PCT")"
+  OUT="$OUT | $(segment "Weekly (7d)" "$SEVEN_PCT")"
 fi
 
 printf '%s\n' "$OUT"

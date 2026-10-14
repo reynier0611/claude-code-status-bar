@@ -7,7 +7,7 @@ A Claude Code statusline that always shows, as progress bars:
 - **7-day** weekly usage quota (when your plan/gateway reports them)
 
 ```
-Claude Sonnet 5 | Ctx [██████░░░░] 61% (122k/200k) | 5h [███░░░░░░░] 34% | 7d [████████░░] 82%
+Claude Sonnet 5 | Context window [████████████░░░░░░░░] 61% (122k/200k) | Session (5h) [███████░░░░░░░░░░░░░] 34% | Weekly (7d) [████████████████░░░░] 82%
 ```
 
 Bars are color-coded (green < 50%, yellow 50-79%, red ≥ 80%). The 5h/7d
@@ -36,14 +36,14 @@ yet, it creates one.
 
 If you'd rather not run the script:
 
-1. Copy `statusline.sh` to `~/.claude/statusline.sh` and `chmod +x` it.
+1. Copy `statusline.sh` to `~/.claude/statusline-command.sh` and `chmod +x` it.
 2. Add this to `~/.claude/settings.json` (merge with whatever's already there):
 
    ```json
    {
      "statusLine": {
        "type": "command",
-       "command": "/Users/you/.claude/statusline.sh"
+       "command": "bash /Users/you/.claude/statusline-command.sh"
      }
    }
    ```
@@ -54,11 +54,11 @@ Claude Code pipes a JSON blob to the statusline command's stdin on every
 turn, including a pre-calculated `context_window` object and (when
 available) a `rate_limits` object with `five_hour` / `seven_day` usage
 percentages. `statusline.sh` reads those fields directly with `jq` — no
-transcript parsing needed — and renders each percentage as a 10-character
+transcript parsing needed — and renders each percentage as a 20-character
 Unicode block bar.
 
 ## Updating
 
 Edit `statusline.sh` here, then re-run `./install.sh` on each machine to
-pick up the change (or just edit `~/.claude/statusline.sh` directly on a
+pick up the change (or just edit `~/.claude/statusline-command.sh` directly on a
 given machine, then copy the change back here).

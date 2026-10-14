@@ -12,7 +12,7 @@ fi
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 SETTINGS="$CLAUDE_DIR/settings.json"
-SCRIPT_DEST="$CLAUDE_DIR/statusline.sh"
+SCRIPT_DEST="$CLAUDE_DIR/statusline-command.sh"
 
 mkdir -p "$CLAUDE_DIR"
 cp "$REPO_DIR/statusline.sh" "$SCRIPT_DEST"
@@ -20,12 +20,12 @@ chmod +x "$SCRIPT_DEST"
 
 if [ -f "$SETTINGS" ]; then
   tmp=$(mktemp)
-  jq --arg cmd "$SCRIPT_DEST" '.statusLine = {"type": "command", "command": $cmd}' "$SETTINGS" > "$tmp"
+  jq --arg cmd "bash $SCRIPT_DEST" '.statusLine = {"type": "command", "command": $cmd}' "$SETTINGS" > "$tmp"
   # Write through (not mv) so a symlinked settings.json keeps pointing at its real target.
   cat "$tmp" > "$SETTINGS"
   rm -f "$tmp"
 else
-  jq -n --arg cmd "$SCRIPT_DEST" '{"statusLine": {"type": "command", "command": $cmd}}' > "$SETTINGS"
+  jq -n --arg cmd "bash $SCRIPT_DEST" '{"statusLine": {"type": "command", "command": $cmd}}' > "$SETTINGS"
 fi
 
 echo "Installed statusline script: $SCRIPT_DEST"
