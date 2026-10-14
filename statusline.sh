@@ -5,13 +5,21 @@
 
 input=$(cat)
 
+# Palette tuned for dark-background terminals. A statusline script only gets
+# JSON on stdin — it can't query the terminal for its actual theme, so this
+# is a fixed choice rather than an auto-detected one.
+LIGHT=$'\033[97m'    # bright white — default color for plain/structural text
+CYAN=$'\033[96m'     # bright cyan — model name
+MAGENTA=$'\033[95m'  # bright magenta — repo name
+BLUE=$'\033[94m'     # bright blue — git branch
 GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
+SEP="   |   "
 
 bar() {
-  local pct=$1 width=20 filled empty out i
+  local pct=$1 width=10 filled empty out i
   filled=$(( (pct * width + 50) / 100 ))
   (( filled > width )) && filled=$width
   (( filled < 0 )) && filled=0
@@ -31,7 +39,7 @@ color() {
 
 segment() {
   local label=$1 pct=$2
-  printf '%s [%s%s%s] %d%%' "$label" "$(color "$pct")" "$(bar "$pct")" "$RESET" "$pct"
+  printf '%s [%s%s%s] %d%%' "$label" "$(color "$pct")" "$(bar "$pct")" "$LIGHT" "$pct"
 }
 
 MODEL=$(printf '%s' "$input" | jq -r '.model.display_name // "Claude"')
@@ -41,16 +49,52 @@ CTX_SIZE=$(printf '%s' "$input" | jq -r '.context_window.context_window_size // 
 CTX_USED_K=$(( (CTX_USED + 500) / 1000 ))
 CTX_SIZE_K=$(( (CTX_SIZE + 500) / 1000 ))
 
-OUT="$MODEL | $(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
+CWD=$(printf '%s' "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+REPO=$(printf '%s' "$input" | jq -r '.workspace.repo.name // empty')
+if [ -z "$REPO" ] && [ -n "$CWD" ]; then
+  REPO=$(basename "$CWD")
+fi
+BRANCH=""
+[ -n "$CWD" ] && BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null)
+
+GIT_INFO=""
+[ -n "$REPO" ] && GIT_INFO="${MAGENTA}${REPO}${LIGHT}"
+[ -n "$BRANCH" ] && GIT_INFO="${GIT_INFO:+$GIT_INFO:}${BLUE}${BRANCH}${LIGHT}"
+
+# Public IPv4 is a network call, so it's cached on disk and refreshed at most
+# once per CACHE_TTL. A fetch failure keeps the last known-good value and
+# still touches the cache file, so a flaky/offline network doesn't trigger a
+# retry (and its ~1.5s timeout) on every single statusline render.
+USERNAME=$(whoami 2>/dev/null)
+IP_CACHE="${TMPDIR:-/tmp}/claude-statusline-public-ip"
+IP_CACHE_TTL=300
+IP_CACHE_AGE=$(( $(date +%s) - $(date -r "$IP_CACHE" +%s 2>/dev/null || stat -c %Y "$IP_CACHE" 2>/dev/null || echo 0) ))
+if [ ! -f "$IP_CACHE" ] || (( IP_CACHE_AGE > IP_CACHE_TTL )); then
+  FETCHED_IP=$(curl -s --max-time 1.5 -4 https://api.ipify.org 2>/dev/null)
+  if printf '%s' "$FETCHED_IP" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+    printf '%s' "$FETCHED_IP" > "$IP_CACHE"
+  else
+    touch "$IP_CACHE"
+  fi
+fi
+PUBLIC_IP=$(cat "$IP_CACHE" 2>/dev/null)
+
+OUT="${LIGHT}"
+OUT="$OUT${CYAN}${MODEL}${LIGHT}"
+if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
+  OUT="$OUT$SEP${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
+fi
+[ -n "$GIT_INFO" ] && OUT="$OUT$SEP$GIT_INFO"
+OUT="$OUT$SEP$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
 
 FIVE_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.five_hour.used_percentage != null then (.rate_limits.five_hour.used_percentage | round) else "" end')
 if [ -n "$FIVE_PCT" ]; then
-  OUT="$OUT | $(segment "Session (5h)" "$FIVE_PCT")"
+  OUT="$OUT$SEP$(segment "Session (5h)" "$FIVE_PCT")"
 fi
 
 SEVEN_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | round) else "" end')
 if [ -n "$SEVEN_PCT" ]; then
-  OUT="$OUT | $(segment "Weekly (7d)" "$SEVEN_PCT")"
+  OUT="$OUT$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")"
 fi
 
-printf '%s\n' "$OUT"
+printf '%s%s\n' "$OUT" "$RESET"

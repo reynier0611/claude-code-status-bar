@@ -1,18 +1,29 @@
 # claude-statusline
 
-A Claude Code statusline that always shows, as progress bars:
+A Claude Code statusline that always shows:
 
-- **Context window** usage for the current conversation
-- **5-hour** session usage quota
-- **7-day** weekly usage quota (when your plan/gateway reports them)
+- The **model** in use, bold/highlighted so it stands out
+- Your **username** and **public IPv4 address**
+- The current **repo and git branch**
+- **Context window** usage for the current conversation, as a progress bar
+- **5-hour** session usage quota, as a progress bar
+- **7-day** weekly usage quota (when your plan/gateway reports them), as a progress bar
 
 ```
-Claude Sonnet 5 | Context window [████████████░░░░░░░░] 61% (122k/200k) | Session (5h) [███████░░░░░░░░░░░░░] 34% | Weekly (7d) [████████████████░░░░] 82%
+Claude Sonnet 5   |   alice@203.0.113.42   |   claude-statusline:main   |   Context window [██████░░░░] 61% (122k/200k)   |   Session (5h) [███░░░░░░░] 34%   |   Weekly (7d) [████████░░] 82%
 ```
 
-Bars are color-coded (green < 50%, yellow 50-79%, red ≥ 80%). The 5h/7d
-segments only appear when Claude Code reports them (e.g. not present for
-plain API-key usage without a subscription quota).
+Sections are separated by wide `   |   ` gaps for scannability. Colors are
+tuned for dark-background terminals: model name bright cyan, repo name
+bright magenta, branch bright blue, and everything else (username/IP,
+labels, brackets, percentages) bright white — nothing is bold. Bars are 10
+characters wide and color-coded (green < 50%, yellow 50-79%, red ≥ 80%).
+A statusline script only receives JSON on stdin, so it has no way to query
+the terminal for its actual theme — there's no light/dark auto-detection,
+just a palette chosen for dark backgrounds. The repo:branch segment is
+omitted outside a git repo (falls back to just the directory name), and
+the 5h/7d segments only appear when Claude Code reports them (e.g. not
+present for plain API-key usage without a subscription quota).
 
 Applied globally via `~/.claude/settings.json`, so it's active in every
 Claude Code session on the machine, in every project.
@@ -25,7 +36,9 @@ cd ~/WORK/TOOLS/claude-statusline
 ./install.sh
 ```
 
-Requires [`jq`](https://jqlang.org) (`brew install jq` / `apt install jq`).
+Requires [`jq`](https://jqlang.org) (`brew install jq` / `apt install jq`) and
+`curl` (for the public IPv4 lookup; preinstalled on macOS and most Linux
+distros).
 
 `install.sh` is safe to re-run — it only touches the top-level `statusLine`
 key in `~/.claude/settings.json`, leaving every other setting (permissions,
@@ -51,11 +64,18 @@ If you'd rather not run the script:
 ## How it works
 
 Claude Code pipes a JSON blob to the statusline command's stdin on every
-turn, including a pre-calculated `context_window` object and (when
-available) a `rate_limits` object with `five_hour` / `seven_day` usage
-percentages. `statusline.sh` reads those fields directly with `jq` — no
-transcript parsing needed — and renders each percentage as a 20-character
-Unicode block bar.
+turn, including a pre-calculated `context_window` object, `workspace`
+(current directory and, when available, repo name), and (when available)
+a `rate_limits` object with `five_hour` / `seven_day` usage percentages.
+`statusline.sh` reads those fields directly with `jq` — no transcript
+parsing needed — and renders each percentage as a 10-character Unicode
+block bar. The git branch isn't in the JSON payload, so the script runs a
+quick local `git branch --show-current` in the reported working directory.
+The username comes from `whoami`. The public IPv4 address is looked up via
+[ipify](https://www.ipify.org) and cached on disk for 5 minutes (keyed by
+a fixed path, shared across all sessions) since it's a network call —
+a failed lookup (e.g. offline) keeps the last known-good value, times out
+after 1.5s, and doesn't retry again until the cache expires.
 
 ## Updating
 
