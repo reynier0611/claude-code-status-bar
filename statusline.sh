@@ -15,7 +15,7 @@ GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
-SEP=" | "
+SEP="  |  "
 
 # Claude's brand color, 256-color rather than 24-bit true-color since
 # 256-color support is close to universal while true-color isn't. Used for
@@ -106,7 +106,7 @@ if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT1="${OUT1}${SEP}"
   OUT1="${OUT1}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
-[ -n "$DISPLAY_PATH" ] && OUT1="$OUT1${SEP}📁 ${LIGHT}${DISPLAY_PATH}"
+[ -n "$DISPLAY_PATH" ] && OUT1="$OUT1${SEP}📂 ${LIGHT}${DISPLAY_PATH}"
 [ -n "$GIT_INFO" ] && OUT1="$OUT1$SEP$GIT_INFO"
 
 OUT2="${LIGHT}$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"

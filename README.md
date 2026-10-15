@@ -12,8 +12,8 @@ A Claude Code statusline that always shows:
 - **7-day** weekly usage quota (when your plan/gateway reports them), as a progress bar
 
 ```
-*  Claude Sonnet 5 - high | 💻 alice@203.0.113.42 | 📁 ~/WORK/TOOLS/claude-statusline | 🌿 claude-statusline:main
-  Context window [██████░░░░] 61% (122k/200k) | Session (5h) [███░░░░░░░] 34% | Weekly (7d) [████████░░] 82%
+*  Claude Sonnet 5 - high  |  💻 alice@203.0.113.42  |  📂 ~/WORK/TOOLS/claude-statusline  |  🌿 claude-statusline:main
+  Context window [██████░░░░] 61% (122k/200k)  |  Session (5h) [███░░░░░░░] 34%  |  Weekly (7d) [████████░░] 82%
 ```
 
 Two lines: identity/location (model, username/IP, path, repo:branch) on
@@ -21,7 +21,7 @@ top, usage bars (context, 5h, 7d) below, indented to line up under the
 first line's content. A bold orange `*` (Claude's brand color) opens
 the first line as a logo stand-in, with the model name/effort in the
 same orange (not bold) so they read as branded together. Sections are
-separated by `|` for scannability. Colors are tuned for dark-background
+separated by `  |  ` for scannability. Colors are tuned for dark-background
 terminals: repo name bright magenta, branch bright blue, and everything
 else (username/IP, path, labels, brackets, percentages) bright white —
 nothing else is bold. Bars are 10 characters wide and color-coded
