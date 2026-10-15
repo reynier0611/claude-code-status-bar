@@ -69,6 +69,7 @@ BRANCH=""
 GIT_INFO=""
 [ -n "$REPO" ] && GIT_INFO="${MAGENTA}${REPO}${LIGHT}"
 [ -n "$BRANCH" ] && GIT_INFO="${GIT_INFO:+$GIT_INFO:}${BLUE}${BRANCH}${LIGHT}"
+[ -n "$GIT_INFO" ] && GIT_INFO="🌿 $GIT_INFO"
 
 # Public IPv4 is a network call, so it's cached on disk and refreshed at most
 # once per CACHE_TTL. A fetch failure keeps the last known-good value and
@@ -93,7 +94,8 @@ OUT="$OUT${ORANGE}${MODEL}"
 [ -n "$EFFORT" ] && OUT="$OUT - ${EFFORT}"
 OUT="$OUT${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
-  OUT="$OUT$SEP${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
+  OUT="${OUT}${SEP}"
+  OUT="${OUT}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
 [ -n "$GIT_INFO" ] && OUT="$OUT$SEP$GIT_INFO"
 OUT="$OUT$SEP$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
