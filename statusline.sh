@@ -66,6 +66,15 @@ fi
 BRANCH=""
 [ -n "$CWD" ] && BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null)
 
+DISPLAY_PATH=""
+if [ -n "$CWD" ]; then
+  case "$CWD" in
+    "$HOME") DISPLAY_PATH="~" ;;
+    "$HOME"/*) DISPLAY_PATH="~${CWD#"$HOME"}" ;;
+    *) DISPLAY_PATH="$CWD" ;;
+  esac
+fi
+
 GIT_INFO=""
 [ -n "$REPO" ] && GIT_INFO="${MAGENTA}${REPO}${LIGHT}"
 [ -n "$BRANCH" ] && GIT_INFO="${GIT_INFO:+$GIT_INFO:}${BLUE}${BRANCH}${LIGHT}"
@@ -97,6 +106,7 @@ if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT="${OUT}${SEP}"
   OUT="${OUT}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
+[ -n "$DISPLAY_PATH" ] && OUT="$OUT${SEP}📁 ${LIGHT}${DISPLAY_PATH}"
 [ -n "$GIT_INFO" ] && OUT="$OUT$SEP$GIT_INFO"
 OUT="$OUT$SEP$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
 

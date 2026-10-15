@@ -5,13 +5,14 @@ A Claude Code statusline that always shows:
 - The **model** in use, bold/highlighted so it stands out, with the current
   **reasoning effort** (when the model supports it)
 - Your **username** and **public IPv4 address**
+- The current **working directory** (`$HOME` collapsed to `~`)
 - The current **repo and git branch**
 - **Context window** usage for the current conversation, as a progress bar
 - **5-hour** session usage quota, as a progress bar
 - **7-day** weekly usage quota (when your plan/gateway reports them), as a progress bar
 
 ```
-*  Claude Sonnet 5 - high   |   alice@203.0.113.42   |   claude-statusline:main   |   Context window [██████░░░░] 61% (122k/200k)   |   Session (5h) [███░░░░░░░] 34%   |   Weekly (7d) [████████░░] 82%
+*  Claude Sonnet 5 - high   |   alice@203.0.113.42   |   📁 ~/WORK/TOOLS/claude-statusline   |   claude-statusline:main   |   Context window [██████░░░░] 61% (122k/200k)   |   Session (5h) [███░░░░░░░] 34%   |   Weekly (7d) [████████░░] 82%
 ```
 
 A bold orange `*` (Claude's brand color) opens the line as a logo
@@ -19,9 +20,9 @@ stand-in, with the model name/effort in the same orange (not bold) so
 they read as branded together. Sections are separated by wide `   |   `
 gaps for scannability. Colors are tuned for dark-background terminals:
 repo name bright magenta, branch bright blue, and everything else
-(username/IP, labels, brackets, percentages) bright white — nothing
-else is bold. Bars are 10 characters wide and color-coded (green < 50%,
-yellow 50-79%, red ≥ 80%).
+(username/IP, path, labels, brackets, percentages) bright white —
+nothing else is bold. Bars are 10 characters wide and color-coded
+(green < 50%, yellow 50-79%, red ≥ 80%).
 A statusline script only receives JSON on stdin, so it has no way to query
 the terminal for its actual theme — there's no light/dark auto-detection,
 just a palette chosen for dark backgrounds. The repo:branch segment is
@@ -69,7 +70,9 @@ If you'd rather not run the script:
 
 Claude Code pipes a JSON blob to the statusline command's stdin on every
 turn, including a pre-calculated `context_window` object, `workspace`
-(current directory and, when available, repo name), and (when available)
+(current directory and, when available, repo name — the same current
+directory is shown directly in its own section, with `$HOME` collapsed
+to `~`), and (when available)
 a `rate_limits` object with `five_hour` / `seven_day` usage percentages.
 `statusline.sh` reads those fields directly with `jq` — no transcript
 parsing needed — and renders each percentage as a 10-character Unicode
