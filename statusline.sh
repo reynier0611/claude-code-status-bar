@@ -9,7 +9,6 @@ input=$(cat)
 # JSON on stdin — it can't query the terminal for its actual theme, so this
 # is a fixed choice rather than an auto-detected one.
 LIGHT=$'\033[97m'    # bright white — default color for plain/structural text
-CYAN=$'\033[96m'     # bright cyan — model name
 MAGENTA=$'\033[95m'  # bright magenta — repo name
 BLUE=$'\033[94m'     # bright blue — git branch
 GREEN=$'\033[32m'
@@ -17,6 +16,15 @@ YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
 SEP="   |   "
+
+# Claude's brand color, 256-color rather than 24-bit true-color since
+# 256-color support is close to universal while true-color isn't. Used for
+# the model name/effort, and bold for the logo asterisk (the one exception
+# to the "nothing is bold" rule below) so it reads as a mark rather than a
+# stray character.
+ORANGE=$'\033[38;5;166m'
+LOGO_ORANGE=$'\033[1;38;5;166m'
+LOGO="*"
 
 bar() {
   local pct=$1 width=10 filled empty out i
@@ -43,6 +51,7 @@ segment() {
 }
 
 MODEL=$(printf '%s' "$input" | jq -r '.model.display_name // "Claude"')
+EFFORT=$(printf '%s' "$input" | jq -r '.effort.level // empty')
 CTX_PCT=$(printf '%s' "$input" | jq -r '(.context_window.used_percentage // 0) | round')
 CTX_USED=$(printf '%s' "$input" | jq -r '.context_window.total_input_tokens // 0')
 CTX_SIZE=$(printf '%s' "$input" | jq -r '.context_window.context_window_size // 200000')
@@ -80,7 +89,9 @@ fi
 PUBLIC_IP=$(cat "$IP_CACHE" 2>/dev/null)
 
 OUT="${LIGHT}"
-OUT="$OUT${CYAN}${MODEL}${LIGHT}"
+OUT="$OUT${ORANGE}${MODEL}"
+[ -n "$EFFORT" ] && OUT="$OUT - ${EFFORT}"
+OUT="$OUT${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT="$OUT$SEP${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
@@ -97,4 +108,4 @@ if [ -n "$SEVEN_PCT" ]; then
   OUT="$OUT$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")"
 fi
 
-printf '%s%s\n' "$OUT" "$RESET"
+printf '%s%s%s %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT" "$RESET"

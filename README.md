@@ -2,7 +2,8 @@
 
 A Claude Code statusline that always shows:
 
-- The **model** in use, bold/highlighted so it stands out
+- The **model** in use, bold/highlighted so it stands out, with the current
+  **reasoning effort** (when the model supports it)
 - Your **username** and **public IPv4 address**
 - The current **repo and git branch**
 - **Context window** usage for the current conversation, as a progress bar
@@ -10,14 +11,17 @@ A Claude Code statusline that always shows:
 - **7-day** weekly usage quota (when your plan/gateway reports them), as a progress bar
 
 ```
-Claude Sonnet 5   |   alice@203.0.113.42   |   claude-statusline:main   |   Context window [██████░░░░] 61% (122k/200k)   |   Session (5h) [███░░░░░░░] 34%   |   Weekly (7d) [████████░░] 82%
+*  Claude Sonnet 5 - high   |   alice@203.0.113.42   |   claude-statusline:main   |   Context window [██████░░░░] 61% (122k/200k)   |   Session (5h) [███░░░░░░░] 34%   |   Weekly (7d) [████████░░] 82%
 ```
 
-Sections are separated by wide `   |   ` gaps for scannability. Colors are
-tuned for dark-background terminals: model name bright cyan, repo name
-bright magenta, branch bright blue, and everything else (username/IP,
-labels, brackets, percentages) bright white — nothing is bold. Bars are 10
-characters wide and color-coded (green < 50%, yellow 50-79%, red ≥ 80%).
+A bold orange `*` (Claude's brand color) opens the line as a logo
+stand-in, with the model name/effort in the same orange (not bold) so
+they read as branded together. Sections are separated by wide `   |   `
+gaps for scannability. Colors are tuned for dark-background terminals:
+repo name bright magenta, branch bright blue, and everything else
+(username/IP, labels, brackets, percentages) bright white — nothing
+else is bold. Bars are 10 characters wide and color-coded (green < 50%,
+yellow 50-79%, red ≥ 80%).
 A statusline script only receives JSON on stdin, so it has no way to query
 the terminal for its actual theme — there's no light/dark auto-detection,
 just a palette chosen for dark backgrounds. The repo:branch segment is
