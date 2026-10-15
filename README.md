@@ -13,7 +13,7 @@ A Claude Code statusline that always shows:
 
 ```
 *  Claude Sonnet 5 - high  |  💻 alice@203.0.113.42  |  📂 ~/WORK/TOOLS/claude-statusline  |  🌿 claude-statusline:main
-  Context window [██████░░░░] 61% (122k/200k)  |  Session (5h) [███░░░░░░░] 34%  |  Weekly (7d) [████████░░] 82%
+  Context window [████████████░░░░░░░░] 61% (122k/200k)  |  Session (5h) [███████░░░░░░░░░░░░░] 34%  |  Weekly (7d) [████████████████░░░░] 82%
 ```
 
 Two lines: identity/location (model, username/IP, path, repo:branch) on
@@ -22,10 +22,10 @@ first line's content. A bold orange `*` (Claude's brand color) opens
 the first line as a logo stand-in, with the model name/effort in the
 same orange (not bold) so they read as branded together. Sections are
 separated by `  |  ` for scannability. Colors are tuned for dark-background
-terminals: repo name bright magenta, branch bright blue, and everything
-else (username/IP, path, labels, brackets, percentages) bright white —
-nothing else is bold. Bars are 10 characters wide and color-coded
-(green < 50%, yellow 50-79%, red ≥ 80%).
+terminals: repo name bright magenta, branch bright blue, username bright
+cyan, and everything else (IP, path, labels, brackets, percentages)
+bright white — nothing else is bold. Bars are 20 characters wide and
+color-coded (green < 50%, yellow 50-79%, red ≥ 80%).
 A statusline script only receives JSON on stdin, so it has no way to query
 the terminal for its actual theme — there's no light/dark auto-detection,
 just a palette chosen for dark backgrounds. The repo:branch segment is
@@ -78,7 +78,7 @@ directory is shown directly in its own section, with `$HOME` collapsed
 to `~`), and (when available)
 a `rate_limits` object with `five_hour` / `seven_day` usage percentages.
 `statusline.sh` reads those fields directly with `jq` — no transcript
-parsing needed — and renders each percentage as a 10-character Unicode
+parsing needed — and renders each percentage as a 20-character Unicode
 block bar. The git branch isn't in the JSON payload, so the script runs a
 quick local `git branch --show-current` in the reported working directory.
 The username comes from `whoami`. The public IPv4 address is looked up via

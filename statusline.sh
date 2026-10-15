@@ -11,6 +11,7 @@ input=$(cat)
 LIGHT=$'\033[97m'    # bright white — default color for plain/structural text
 MAGENTA=$'\033[95m'  # bright magenta — repo name
 BLUE=$'\033[94m'     # bright blue — git branch
+CYAN=$'\033[96m'     # bright cyan — username
 GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
@@ -27,7 +28,7 @@ LOGO_ORANGE=$'\033[1;38;5;166m'
 LOGO="*"
 
 bar() {
-  local pct=$1 width=10 filled empty out i
+  local pct=$1 width=20 filled empty out i
   filled=$(( (pct * width + 50) / 100 ))
   (( filled > width )) && filled=$width
   (( filled < 0 )) && filled=0
@@ -104,7 +105,7 @@ OUT1="$OUT1${ORANGE}${MODEL}"
 OUT1="$OUT1${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT1="${OUT1}${SEP}"
-  OUT1="${OUT1}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
+  OUT1="${OUT1}💻 ${CYAN}${USERNAME}${LIGHT}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
 [ -n "$DISPLAY_PATH" ] && OUT1="$OUT1${SEP}📂 ${LIGHT}${DISPLAY_PATH}"
 [ -n "$GIT_INFO" ] && OUT1="$OUT1$SEP$GIT_INFO"
