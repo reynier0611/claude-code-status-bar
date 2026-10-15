@@ -15,7 +15,7 @@ GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
-SEP="   |   "
+SEP=" | "
 
 # Claude's brand color, 256-color rather than 24-bit true-color since
 # 256-color support is close to universal while true-color isn't. Used for
@@ -98,26 +98,27 @@ if [ ! -f "$IP_CACHE" ] || (( IP_CACHE_AGE > IP_CACHE_TTL )); then
 fi
 PUBLIC_IP=$(cat "$IP_CACHE" 2>/dev/null)
 
-OUT="${LIGHT}"
-OUT="$OUT${ORANGE}${MODEL}"
-[ -n "$EFFORT" ] && OUT="$OUT - ${EFFORT}"
-OUT="$OUT${LIGHT}"
+OUT1="${LIGHT}"
+OUT1="$OUT1${ORANGE}${MODEL}"
+[ -n "$EFFORT" ] && OUT1="$OUT1 - ${EFFORT}"
+OUT1="$OUT1${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
-  OUT="${OUT}${SEP}"
-  OUT="${OUT}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
+  OUT1="${OUT1}${SEP}"
+  OUT1="${OUT1}💻 ${USERNAME}${PUBLIC_IP:+@$PUBLIC_IP}"
 fi
-[ -n "$DISPLAY_PATH" ] && OUT="$OUT${SEP}📁 ${LIGHT}${DISPLAY_PATH}"
-[ -n "$GIT_INFO" ] && OUT="$OUT$SEP$GIT_INFO"
-OUT="$OUT$SEP$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
+[ -n "$DISPLAY_PATH" ] && OUT1="$OUT1${SEP}📁 ${LIGHT}${DISPLAY_PATH}"
+[ -n "$GIT_INFO" ] && OUT1="$OUT1$SEP$GIT_INFO"
+
+OUT2="${LIGHT}$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
 
 FIVE_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.five_hour.used_percentage != null then (.rate_limits.five_hour.used_percentage | round) else "" end')
 if [ -n "$FIVE_PCT" ]; then
-  OUT="$OUT$SEP$(segment "Session (5h)" "$FIVE_PCT")"
+  OUT2="$OUT2$SEP$(segment "Session (5h)" "$FIVE_PCT")"
 fi
 
 SEVEN_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | round) else "" end')
 if [ -n "$SEVEN_PCT" ]; then
-  OUT="$OUT$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")"
+  OUT2="$OUT2$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")"
 fi
 
-printf '%s%s%s %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT" "$RESET"
+printf '%s%s%s %s%s\n  %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT1" "$RESET" "$OUT2" "$RESET"
