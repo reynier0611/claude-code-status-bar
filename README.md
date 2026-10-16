@@ -11,6 +11,16 @@ A Claude Code statusline that always shows:
 - **5-hour** session usage quota, as a progress bar, with a countdown to its reset
 - **7-day** weekly usage quota (when your plan/gateway reports them), as a progress bar, with a countdown to its reset
 
+On **API billing** (no subscription quotas) the 5h/7d bars are replaced by
+the money spent this session and this month, e.g.
+`Session cost $1.23  |  This month $45.67`. Which one you see is detected
+automatically: reported `rate_limits` mean a subscription; otherwise an
+`ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in the environment means API, and
+an OAuth login in `~/.claude.json` means a subscription. Force a view with
+`CLAUDE_STATUSLINE_USAGE=quota` or `=cost`. Session cost is Claude Code's own
+figure; the month total sums a ledger at `~/.claude/statusline-costs.json`
+(only sessions that ran through this statusline are in it).
+
 Countdowns show minutes under an hour (`37m`), hours under a day (`4h`), and
 days beyond that (`3d`).
 
@@ -138,6 +148,13 @@ folder and repo:branch (VS Code already shows those):
 ```
 ✱ Sonnet 5 - xhigh   💻 alice@203.0.113.42   Context window [█░░░░] 4% (45k/1000k)   Session (5h) [█░░░░] 10% ↻4h   Weekly (7d) [██░░░] 43% ↻3d
 ```
+
+On API billing the two quota segments become `Session $1.23` and
+`Month $45.67`. These are only ever the figures Claude Code reported to the
+terminal statusline (read from its ledger); nothing is estimated. The VS Code
+panel never reports cost, so its sessions aren't counted and the session
+figure is hidden when the open session isn't in the ledger. Set
+`claudeStatusline.usageView` (`auto`/`quota`/`cost`) to override detection.
 
 Hovering shows exact reset times, the folder, and repo:branch. Set
 `claudeStatusline.showLocation` to also put the folder and repo:branch in the

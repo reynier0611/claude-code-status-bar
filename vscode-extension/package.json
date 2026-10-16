@@ -1,8 +1,8 @@
 {
   "name": "claude-statusline",
   "displayName": "Claude Statusline",
-  "description": "Shows the claude-statusline info (model, effort, context window, 5h/7d quotas, repo/branch) in VS Code's status bar, for Claude Code chat-panel sessions.",
-  "version": "0.3.1",
+  "description": "Shows the claude-statusline info (model, effort, context window, 5h/7d quotas or reported session/monthly cost, repo/branch) in VS Code's status bar, for Claude Code chat-panel sessions.",
+  "version": "0.4.0",
   "publisher": "reynier0611",
   "repository": {
     "type": "git",
@@ -38,6 +38,16 @@
           "type": "number",
           "default": 0,
           "description": "Context window size in tokens. 0 = auto (1M for [1m] models, otherwise the size your terminal statusline has reported for that model, otherwise 200k)."
+        },
+        "claudeStatusline.usageView": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "quota",
+            "cost"
+          ],
+          "default": "auto",
+          "description": "What to show after the context window: 5h/7d quota bars (subscription) or money spent this session and this month (API). auto detects which one you're on."
         }
       }
     }

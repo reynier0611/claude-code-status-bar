@@ -125,16 +125,57 @@ OUT2="${LIGHT}$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_
 
 FIVE_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.five_hour.used_percentage != null then (.rate_limits.five_hour.used_percentage | round) else "" end')
 FIVE_RESET=$(printf '%s' "$input" | jq -r '.rate_limits.five_hour.resets_at // empty | floor')
-if [ -n "$FIVE_PCT" ]; then
-  FIVE_RESET_STR=$(countdown "$FIVE_RESET")
-  OUT2="$OUT2$SEP$(segment "Session (5h)" "$FIVE_PCT")${FIVE_RESET_STR:+ (resets in $FIVE_RESET_STR)}"
-fi
-
 SEVEN_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | round) else "" end')
 SEVEN_RESET=$(printf '%s' "$input" | jq -r '.rate_limits.seven_day.resets_at // empty | floor')
-if [ -n "$SEVEN_PCT" ]; then
-  SEVEN_RESET_STR=$(countdown "$SEVEN_RESET")
-  OUT2="$OUT2$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")${SEVEN_RESET_STR:+ (resets in $SEVEN_RESET_STR)}"
+
+# Subscription vs. API billing. Only subscription (claude.ai) plans report
+# rate_limits, so their presence is definitive. Before the first quota report
+# (or if it's missing), fall back to the credentials in play: an API key in
+# the environment means API billing, else an OAuth login in ~/.claude.json
+# means a subscription. CLAUDE_STATUSLINE_USAGE=quota|cost forces either view.
+if [ -n "$FIVE_PCT$SEVEN_PCT" ]; then
+  BILLING=subscription
+elif [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+  BILLING=api
+elif jq -e '.oauthAccount' "$HOME/.claude.json" >/dev/null 2>&1; then
+  BILLING=subscription
+else
+  BILLING=api
+fi
+case "${CLAUDE_STATUSLINE_USAGE:-auto}" in
+  quota) VIEW=quota ;;
+  cost) VIEW=cost ;;
+  *) [ "$BILLING" = api ] && VIEW=cost || VIEW=quota ;;
+esac
+
+# Money spent: Claude Code reports this session's cost; the month total is
+# the sum over a small ledger of every session this script has seen, keyed by
+# month then session id (a session's cost only grows, so the latest value
+# wins). Sessions that never ran through this statusline (e.g. the VS Code
+# panel) aren't in it.
+SESSION_ID=$(printf '%s' "$input" | jq -r '.session_id // empty')
+SESSION_COST=$(printf '%s' "$input" | jq -r '.cost.total_cost_usd // empty')
+COST_LEDGER="${CLAUDE_STATUSLINE_COST_FILE:-$HOME/.claude/statusline-costs.json}"
+MONTH=$(date +%Y-%m)
+if [ -n "$SESSION_ID" ] && [ -n "$SESSION_COST" ]; then
+  [ -f "$COST_LEDGER" ] || echo '{}' > "$COST_LEDGER"
+  jq -c --arg m "$MONTH" --arg s "$SESSION_ID" --argjson c "$SESSION_COST" \
+    '.[$m][$s] = $c' "$COST_LEDGER" > "$COST_LEDGER.tmp" 2>/dev/null && mv "$COST_LEDGER.tmp" "$COST_LEDGER"
+fi
+MONTH_COST=$(jq -r --arg m "$MONTH" '(.[$m] // {}) | [.[]] | add // 0' "$COST_LEDGER" 2>/dev/null)
+
+if [ "$VIEW" = cost ]; then
+  OUT2="$OUT2$SEP$(printf 'Session cost $%.2f' "${SESSION_COST:-0}")"
+  OUT2="$OUT2$SEP$(printf 'This month $%.2f' "${MONTH_COST:-0}")"
+else
+  if [ -n "$FIVE_PCT" ]; then
+    FIVE_RESET_STR=$(countdown "$FIVE_RESET")
+    OUT2="$OUT2$SEP$(segment "Session (5h)" "$FIVE_PCT")${FIVE_RESET_STR:+ (resets in $FIVE_RESET_STR)}"
+  fi
+  if [ -n "$SEVEN_PCT" ]; then
+    SEVEN_RESET_STR=$(countdown "$SEVEN_RESET")
+    OUT2="$OUT2$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")${SEVEN_RESET_STR:+ (resets in $SEVEN_RESET_STR)}"
+  fi
 fi
 
 printf '%s%s%s %s%s\n  %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT1" "$RESET" "$OUT2" "$RESET"
@@ -168,11 +209,16 @@ jq -n \
   --argjson seven_pct "${SEVEN_PCT:-null}" \
   --argjson five_resets_at "${FIVE_RESET:-null}" \
   --argjson seven_resets_at "${SEVEN_RESET:-null}" \
+  --arg billing "$BILLING" \
+  --arg view "$VIEW" \
+  --argjson session_cost "${SESSION_COST:-null}" \
+  --argjson month_cost "${MONTH_COST:-null}" \
   --argjson updated_at "$(date +%s)" \
   '{model:$model, effort:$effort, username:$username, public_ip:$public_ip,
     path:$path, repo:$repo, branch:$branch, ctx_pct:$ctx_pct,
     ctx_used_k:$ctx_used_k, ctx_size_k:$ctx_size_k, five_pct:$five_pct,
     seven_pct:$seven_pct, five_resets_at:$five_resets_at,
-    seven_resets_at:$seven_resets_at, ctx_sizes:$ctx_sizes,
+    seven_resets_at:$seven_resets_at, billing:$billing, view:$view,
+    session_cost:$session_cost, month_cost:$month_cost, ctx_sizes:$ctx_sizes,
     updated_at:$updated_at}' \
   > "$LIVE_FILE.tmp" 2>/dev/null && mv "$LIVE_FILE.tmp" "$LIVE_FILE"

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Detects subscription vs. API billing. On API billing the 5h/7d quota bars
+  give way to `Session $…` and `Month $…`, using only the cost Claude Code
+  reported to the terminal statusline (no estimates).
+- New setting `claudeStatusline.usageView`.
+
 ## 0.3.1
 
 - Reset countdowns are shown as `↻4h` again instead of `(resets in 4h)`.

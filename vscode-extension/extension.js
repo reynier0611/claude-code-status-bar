@@ -16,6 +16,8 @@ const TAIL_BYTES = 512 * 1024;
 // Quotas only ever come from the terminal statusline hook. Without a reset time,
 // treat a snapshot older than 5h as stale since the 5h window has rolled over.
 const QUOTA_MAX_AGE_MS = 5 * 3600 * 1000;
+const CLAUDE_JSON = path.join(HOME, '.claude.json');
+const COST_FILE = process.env.CLAUDE_STATUSLINE_COST_FILE || path.join(HOME, '.claude', 'statusline-costs.json');
 const OPEN_CLAUDE_COMMAND = 'claude-vscode.editor.openLast';
 
 const ORANGE = '#d75f00';
@@ -34,7 +36,7 @@ let ipFetch = null;
 function activate(context) {
   log = vscode.window.createOutputChannel('Claude Statusline', { log: true });
   context.subscriptions.push(log);
-  const order = ['model', 'identity', 'ctx', 'five', 'seven', 'path', 'git'];
+  const order = ['model', 'identity', 'ctx', 'five', 'seven', 'cost', 'month', 'path', 'git'];
   order.forEach((name, i) => {
     const item = vscode.window.createStatusBarItem(`claudeStatusline.${name}`, vscode.StatusBarAlignment.Left, -1000 - i);
     item.name = 'Claude Statusline';
@@ -88,7 +90,9 @@ async function collect() {
 
   const cwd = (session && session.cwd) || folders[0];
   const [git, ip, live] = await Promise.all([gitInfo(cwd), publicIp(), readLive()]);
-  return { session, cwd, git, ip, live, username: os.userInfo().username };
+  const billing = await detectBilling(live);
+  const spend = await spendInfo(session && transcript);
+  return { session, cwd, git, ip, live, billing, spend, username: os.userInfo().username };
 }
 
 // Claude Code stores each project's transcripts under ~/.claude/projects/<cwd with non-alphanumerics as '-'>.
@@ -247,6 +251,47 @@ function contextWindowSize(session, live) {
   return known > 0 ? known * 1000 : 200000;
 }
 
+// "subscription" (claude.ai plan, has 5h/7d quotas) or "api" (pay per token).
+// Mirrors statusline.sh: quotas in the terminal snapshot are definitive; else
+// an API key in the environment means API; else an OAuth login in
+// ~/.claude.json means subscription.
+async function detectBilling(live) {
+  const forced = vscode.workspace.getConfiguration('claudeStatusline').get('usageView');
+  if (forced === 'quota') return 'subscription';
+  if (forced === 'cost') return 'api';
+  const now = Date.now();
+  if (quota(live, 'five', now) || quota(live, 'seven', now)) return 'subscription';
+  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return 'api';
+  try {
+    return JSON.parse(await fsp.readFile(CLAUDE_JSON, 'utf8')).oauthAccount ? 'subscription' : 'api';
+  } catch {
+    return 'api';
+  }
+}
+
+async function readCosts() {
+  try {
+    return JSON.parse(await fsp.readFile(COST_FILE, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+// Money spent, from the ledger statusline.sh keeps of the cost Claude Code
+// reports for each terminal session. The VS Code panel never reports cost, so
+// its sessions aren't in the ledger and show nothing rather than a guess.
+async function spendInfo(transcript) {
+  const month = new Date().toLocaleDateString('sv').slice(0, 7);
+  const ledger = (await readCosts())[month] || {};
+  const known = transcript ? ledger[path.basename(transcript.path, '.jsonl')] : null;
+  const total = Object.values(ledger).reduce((sum, c) => sum + c, 0);
+  return { session: known != null ? known : null, month, total };
+}
+
+function money(v) {
+  return `$${v.toFixed(2)}`;
+}
+
 function bar(pct, width) {
   const filled = Math.max(0, Math.min(width, Math.round((pct * width) / 100)));
   return '█'.repeat(filled) + '░'.repeat(width - filled);
@@ -317,7 +362,7 @@ function set(name, text, opts = {}) {
 
 function render(data) {
   shown = [];
-  const { session, cwd, git, ip, live, username } = data;
+  const { session, cwd, git, ip, live, billing, spend, username } = data;
   const config = vscode.workspace.getConfiguration('claudeStatusline');
   const width = config.get('barWidth');
   const showLocation = config.get('showLocation');
@@ -339,8 +384,13 @@ function render(data) {
 
   const five = quota(live, 'five', now);
   const seven = quota(live, 'seven', now);
-  tip.appendMarkdown(quotaTip('Session (5h)', five, now) + quotaTip('Weekly (7d)', seven, now));
-  if (five || seven) {
+  const showCost = billing === 'api';
+  if (showCost) {
+    tip.appendMarkdown(`Session cost: ${spend.session != null ? money(spend.session) : 'not reported (only terminal sessions report cost)'}\n\nThis month (${spend.month}): ${money(spend.total)}\n\n_Costs are what Claude Code reported to the terminal statusline; VS Code panel sessions are not included_\n\n`);
+  } else {
+    tip.appendMarkdown(quotaTip('Session (5h)', five, now) + quotaTip('Weekly (7d)', seven, now));
+  }
+  if (!showCost && (five || seven)) {
     tip.appendMarkdown(`_Quotas as of ${ago(now - live.updated_at * 1000)}, from the terminal statusline (the VS Code panel doesn't expose them)_\n\n`);
   }
 
@@ -352,8 +402,10 @@ function render(data) {
   set('model', session ? `✱ ${session.model}${session.effort ? ` - ${session.effort}` : ''}` : '✱ Claude', { color: ORANGE, tooltip: tip });
   set('identity', username || ip ? `💻 ${username}${ip ? `@${ip}` : ''}` : '', { color: color('terminal.ansiBrightCyan'), tooltip: tip });
   set('ctx', ctx ? segment('Context window', ctx.pct, width, ` (${ctx.usedK}k/${ctx.sizeK}k)`) : '', { color: ctx && pctColor(ctx.pct), tooltip: tip });
-  set('five', five ? quotaText('Session (5h)', five, width, now) : '', { color: five && pctColor(five.pct), tooltip: tip });
-  set('seven', seven ? quotaText('Weekly (7d)', seven, width, now) : '', { color: seven && pctColor(seven.pct), tooltip: tip });
+  set('five', !showCost && five ? quotaText('Session (5h)', five, width, now) : '', { color: five && pctColor(five.pct), tooltip: tip });
+  set('seven', !showCost && seven ? quotaText('Weekly (7d)', seven, width, now) : '', { color: seven && pctColor(seven.pct), tooltip: tip });
+  set('cost', showCost && spend.session != null ? `Session ${money(spend.session)}` : '', { tooltip: tip });
+  set('month', showCost ? `Month ${money(spend.total)}` : '', { tooltip: tip });
   set('path', showLocation ? `$(folder-opened) ${displayPath(cwd)}` : '', { tooltip: tip });
   set('git', showLocation && git.repo ? `$(git-branch) ${git.repo}${branchPart}` : '', { color: color('terminal.ansiBrightBlue'), tooltip: tip });
   logRendered();
