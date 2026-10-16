@@ -1,0 +1,51 @@
+{
+  "name": "claude-statusline",
+  "displayName": "Claude Statusline",
+  "description": "Shows the claude-statusline info (model, effort, context window, 5h/7d quotas, repo/branch) in VS Code's status bar, for Claude Code chat-panel sessions.",
+  "version": "0.3.1",
+  "publisher": "reynier0611",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reynier0611/claude-code-status-bar"
+  },
+  "engines": {
+    "vscode": "^1.98.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Claude Statusline",
+      "properties": {
+        "claudeStatusline.showLocation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also show the folder and repo:branch in the status bar (they're always in the tooltip)."
+        },
+        "claudeStatusline.barWidth": {
+          "type": "number",
+          "default": 5,
+          "minimum": 3,
+          "maximum": 40,
+          "description": "Width, in characters, of each usage progress bar."
+        },
+        "claudeStatusline.contextWindowSize": {
+          "type": "number",
+          "default": 0,
+          "description": "Context window size in tokens. 0 = auto (1M for [1m] models, otherwise the size your terminal statusline has reported for that model, otherwise 200k)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "vsce package --skip-license --out ../dist/"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0"
+  }
+}

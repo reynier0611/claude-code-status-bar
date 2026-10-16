@@ -51,6 +51,17 @@ segment() {
   printf '%s [%s%s%s] %d%%' "$label" "$(color "$pct")" "$(bar "$pct")" "$LIGHT" "$pct"
 }
 
+# Epoch seconds -> time left: "37m" under an hour, "4h" under a day, else "3d".
+countdown() {
+  local ts=$1 s
+  [ -n "$ts" ] || return 0
+  s=$(( ts - $(date +%s) ))
+  (( s < 0 )) && s=0
+  if (( s < 3600 )); then printf '%dm' $(( s / 60 ))
+  elif (( s < 86400 )); then printf '%dh' $(( s / 3600 ))
+  else printf '%dd' $(( s / 86400 )); fi
+}
+
 MODEL=$(printf '%s' "$input" | jq -r '.model.display_name // "Claude"')
 EFFORT=$(printf '%s' "$input" | jq -r '.effort.level // empty')
 CTX_PCT=$(printf '%s' "$input" | jq -r '(.context_window.used_percentage // 0) | round')
@@ -113,13 +124,55 @@ fi
 OUT2="${LIGHT}$(segment "Context window" "$CTX_PCT") (${CTX_USED_K}k/${CTX_SIZE_K}k)"
 
 FIVE_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.five_hour.used_percentage != null then (.rate_limits.five_hour.used_percentage | round) else "" end')
+FIVE_RESET=$(printf '%s' "$input" | jq -r '.rate_limits.five_hour.resets_at // empty | floor')
 if [ -n "$FIVE_PCT" ]; then
-  OUT2="$OUT2$SEP$(segment "Session (5h)" "$FIVE_PCT")"
+  FIVE_RESET_STR=$(countdown "$FIVE_RESET")
+  OUT2="$OUT2$SEP$(segment "Session (5h)" "$FIVE_PCT")${FIVE_RESET_STR:+ (resets in $FIVE_RESET_STR)}"
 fi
 
 SEVEN_PCT=$(printf '%s' "$input" | jq -r 'if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | round) else "" end')
+SEVEN_RESET=$(printf '%s' "$input" | jq -r '.rate_limits.seven_day.resets_at // empty | floor')
 if [ -n "$SEVEN_PCT" ]; then
-  OUT2="$OUT2$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")"
+  SEVEN_RESET_STR=$(countdown "$SEVEN_RESET")
+  OUT2="$OUT2$SEP$(segment "Weekly (7d)" "$SEVEN_PCT")${SEVEN_RESET_STR:+ (resets in $SEVEN_RESET_STR)}"
 fi
 
 printf '%s%s%s %s%s\n  %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT1" "$RESET" "$OUT2" "$RESET"
+
+# Also snapshot the same data as plain JSON (no ANSI) to a fixed path, on
+# every invocation, regardless of which frontend (terminal CLI or another
+# UI) triggered it. This lets something other than a terminal — e.g. a
+# VS Code status bar item — mirror the statusline without re-deriving any
+# of the above. Written atomically (tmp file + mv) so a reader never sees
+# a half-written file.
+LIVE_FILE="${CLAUDE_STATUSLINE_LIVE_FILE:-$HOME/.claude/statusline-live.json}"
+# ctx_sizes accumulates the context window size reported for every model seen,
+# since other readers (VS Code transcripts) know the model but not its size.
+CTX_SIZES=$(jq -c '.ctx_sizes // {}' "$LIVE_FILE" 2>/dev/null || echo '{}')
+if [ -n "$(printf '%s' "$input" | jq -r '.context_window.context_window_size // empty')" ]; then
+  CTX_SIZES=$(jq -c --arg m "$MODEL" --argjson k "$CTX_SIZE_K" '. + {($m): $k}' <<<"$CTX_SIZES")
+fi
+jq -n \
+  --argjson ctx_sizes "$CTX_SIZES" \
+  --arg model "$MODEL" \
+  --arg effort "$EFFORT" \
+  --arg username "$USERNAME" \
+  --arg public_ip "$PUBLIC_IP" \
+  --arg path "$DISPLAY_PATH" \
+  --arg repo "$REPO" \
+  --arg branch "$BRANCH" \
+  --argjson ctx_pct "${CTX_PCT:-0}" \
+  --argjson ctx_used_k "${CTX_USED_K:-0}" \
+  --argjson ctx_size_k "${CTX_SIZE_K:-0}" \
+  --argjson five_pct "${FIVE_PCT:-null}" \
+  --argjson seven_pct "${SEVEN_PCT:-null}" \
+  --argjson five_resets_at "${FIVE_RESET:-null}" \
+  --argjson seven_resets_at "${SEVEN_RESET:-null}" \
+  --argjson updated_at "$(date +%s)" \
+  '{model:$model, effort:$effort, username:$username, public_ip:$public_ip,
+    path:$path, repo:$repo, branch:$branch, ctx_pct:$ctx_pct,
+    ctx_used_k:$ctx_used_k, ctx_size_k:$ctx_size_k, five_pct:$five_pct,
+    seven_pct:$seven_pct, five_resets_at:$five_resets_at,
+    seven_resets_at:$seven_resets_at, ctx_sizes:$ctx_sizes,
+    updated_at:$updated_at}' \
+  > "$LIVE_FILE.tmp" 2>/dev/null && mv "$LIVE_FILE.tmp" "$LIVE_FILE"
