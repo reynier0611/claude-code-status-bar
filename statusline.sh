@@ -159,8 +159,9 @@ COST_LEDGER="${CLAUDE_STATUSLINE_COST_FILE:-$HOME/.claude/statusline-costs.json}
 MONTH=$(date +%Y-%m)
 if [ -n "$SESSION_ID" ] && [ -n "$SESSION_COST" ]; then
   [ -f "$COST_LEDGER" ] || echo '{}' > "$COST_LEDGER"
-  jq -c --arg m "$MONTH" --arg s "$SESSION_ID" --argjson c "$SESSION_COST" \
-    '.[$m][$s] = $c' "$COST_LEDGER" > "$COST_LEDGER.tmp" 2>/dev/null && mv "$COST_LEDGER.tmp" "$COST_LEDGER"
+  COST_TMP=$(mktemp "$COST_LEDGER.XXXXXX") && \
+    jq -c --arg m "$MONTH" --arg s "$SESSION_ID" --argjson c "$SESSION_COST" \
+      '.[$m][$s] = $c' "$COST_LEDGER" > "$COST_TMP" 2>/dev/null && mv "$COST_TMP" "$COST_LEDGER"
 fi
 MONTH_COST=$(jq -r --arg m "$MONTH" '(.[$m] // {}) | [.[]] | add // 0' "$COST_LEDGER" 2>/dev/null)
 
@@ -187,6 +188,7 @@ printf '%s%s%s %s%s\n  %s%s\n' "$LOGO_ORANGE" "$LOGO" "$RESET" "$OUT1" "$RESET" 
 # of the above. Written atomically (tmp file + mv) so a reader never sees
 # a half-written file.
 LIVE_FILE="${CLAUDE_STATUSLINE_LIVE_FILE:-$HOME/.claude/statusline-live.json}"
+LIVE_TMP=$(mktemp "$LIVE_FILE.XXXXXX")
 # ctx_sizes accumulates the context window size reported for every model seen,
 # since other readers (VS Code transcripts) know the model but not its size.
 CTX_SIZES=$(jq -c '.ctx_sizes // {}' "$LIVE_FILE" 2>/dev/null || echo '{}')
@@ -221,4 +223,4 @@ jq -n \
     seven_resets_at:$seven_resets_at, billing:$billing, view:$view,
     session_cost:$session_cost, month_cost:$month_cost, ctx_sizes:$ctx_sizes,
     updated_at:$updated_at}' \
-  > "$LIVE_FILE.tmp" 2>/dev/null && mv "$LIVE_FILE.tmp" "$LIVE_FILE"
+  > "$LIVE_TMP" 2>/dev/null && mv "$LIVE_TMP" "$LIVE_FILE"
