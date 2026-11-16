@@ -62,6 +62,7 @@ countdown() {
   else printf '%dd' $(( s / 86400 )); fi
 }
 
+SESSION_ID=$(printf '%s' "$input" | jq -r '.session_id // empty')
 MODEL=$(printf '%s' "$input" | jq -r '.model.display_name // "Claude"')
 EFFORT=$(printf '%s' "$input" | jq -r '.effort.level // empty')
 CTX_PCT=$(printf '%s' "$input" | jq -r '(.context_window.used_percentage // 0) | round')
@@ -113,6 +114,7 @@ PUBLIC_IP=$(cat "$IP_CACHE" 2>/dev/null)
 OUT1="${LIGHT}"
 OUT1="$OUT1${ORANGE}${MODEL}"
 [ -n "$EFFORT" ] && OUT1="$OUT1 - ${EFFORT}"
+[ -n "$SESSION_ID" ] && OUT1="$OUT1 ${LIGHT}🔑 ${SESSION_ID:0:8}"
 OUT1="$OUT1${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT1="${OUT1}${SEP}"
@@ -153,7 +155,6 @@ esac
 # month then session id (a session's cost only grows, so the latest value
 # wins). Sessions that never ran through this statusline (e.g. the VS Code
 # panel) aren't in it.
-SESSION_ID=$(printf '%s' "$input" | jq -r '.session_id // empty')
 SESSION_COST=$(printf '%s' "$input" | jq -r '.cost.total_cost_usd // empty')
 COST_LEDGER="${CLAUDE_STATUSLINE_COST_FILE:-$HOME/.claude/statusline-costs.json}"
 MONTH=$(date +%Y-%m)

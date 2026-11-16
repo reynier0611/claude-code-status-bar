@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Shows a short session ID in the status bar (click to copy the full ID; resume
+  with `claude --resume <id>`). New setting `claudeStatusline.showSessionId`.
+
 ## 0.4.0
 
 - Detects subscription vs. API billing. On API billing the 5h/7d quota bars

@@ -2,7 +2,7 @@
   "name": "claude-statusline",
   "displayName": "Claude Statusline",
   "description": "Shows the claude-statusline info (model, effort, context window, 5h/7d quotas or reported session/monthly cost, repo/branch) in VS Code's status bar, for Claude Code chat-panel sessions.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "reynier0611",
   "repository": {
     "type": "git",
@@ -19,6 +19,12 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "claudeStatusline.copySessionId",
+        "title": "Claude Statusline: Copy Session ID"
+      }
+    ],
     "configuration": {
       "title": "Claude Statusline",
       "properties": {
@@ -26,6 +32,11 @@
           "type": "boolean",
           "default": false,
           "description": "Also show the folder and repo:branch in the status bar (they're always in the tooltip)."
+        },
+        "claudeStatusline.showSessionId": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a short session ID in the status bar (click to copy the full ID; resume with `claude --resume <id>`)."
         },
         "claudeStatusline.barWidth": {
           "type": "number",

@@ -36,7 +36,7 @@ let ipFetch = null;
 function activate(context) {
   log = vscode.window.createOutputChannel('Claude Statusline', { log: true });
   context.subscriptions.push(log);
-  const order = ['model', 'identity', 'ctx', 'five', 'seven', 'cost', 'month', 'path', 'git'];
+  const order = ['model', 'identity', 'ctx', 'five', 'seven', 'cost', 'month', 'path', 'git', 'sid'];
   order.forEach((name, i) => {
     const item = vscode.window.createStatusBarItem(`claudeStatusline.${name}`, vscode.StatusBarAlignment.Left, -1000 - i);
     item.name = 'Claude Statusline';
@@ -47,6 +47,11 @@ function activate(context) {
 
   timer = setInterval(refresh, POLL_MS);
   context.subscriptions.push(
+    vscode.commands.registerCommand('claudeStatusline.copySessionId', async (id) => {
+      if (!id) return;
+      await vscode.env.clipboard.writeText(id);
+      vscode.window.setStatusBarMessage(`Copied session ID ${id} (resume with: claude --resume ${id})`, 5000);
+    }),
     { dispose: () => clearInterval(timer) },
     vscode.workspace.onDidChangeWorkspaceFolders(refresh),
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -85,7 +90,7 @@ async function collect() {
     if (sessionCache.key !== key) {
       sessionCache = { key, data: parseSession(await readTail(transcript.path, transcript.size)) };
     }
-    session = sessionCache.data && { ...sessionCache.data, mtimeMs: transcript.mtimeMs };
+    session = sessionCache.data && { ...sessionCache.data, mtimeMs: transcript.mtimeMs, id: path.basename(transcript.path, '.jsonl') };
   }
 
   const cwd = (session && session.cwd) || folders[0];
@@ -354,6 +359,7 @@ function set(name, text, opts = {}) {
     return;
   }
   item.text = text;
+  item.command = opts.command || OPEN_CLAUDE_COMMAND;
   item.color = opts.color;
   item.tooltip = opts.tooltip;
   item.show();
@@ -377,6 +383,7 @@ function render(data) {
     ctx = { pct, usedK: Math.round(session.ctxUsed / 1000), sizeK: Math.round(size / 1000) };
     tip.appendMarkdown(`**${session.model}**${session.effort ? ` · effort \`${session.effort}\`` : ''}\n\n`);
     if (session.title) tip.appendMarkdown(`Session: _${session.title}_\n\n`);
+    tip.appendMarkdown(`Session ID: \`${session.id}\` (resume: \`claude --resume ${session.id}\`)\n\n`);
     tip.appendMarkdown(`Context window: ${ctx.usedK}k / ${ctx.sizeK}k (${ctx.pct}%)\n\n`);
   } else {
     tip.appendMarkdown('No Claude Code session found for this workspace yet.\n\n');
@@ -408,6 +415,10 @@ function render(data) {
   set('month', showCost ? `Month ${money(spend.total)}` : '', { tooltip: tip });
   set('path', showLocation ? `$(folder-opened) ${displayPath(cwd)}` : '', { tooltip: tip });
   set('git', showLocation && git.repo ? `$(git-branch) ${git.repo}${branchPart}` : '', { color: color('terminal.ansiBrightBlue'), tooltip: tip });
+  set('sid', config.get('showSessionId') && session ? `$(key) ${session.id.slice(0, 8)}` : '', {
+    tooltip: session && `Session ID: ${session.id}\n\nClick to copy. Resume with: claude --resume ${session.id}`,
+    command: session && { command: 'claudeStatusline.copySessionId', title: 'Copy session ID', arguments: [session.id] },
+  });
   logRendered();
 }
 
