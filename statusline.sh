@@ -114,7 +114,7 @@ PUBLIC_IP=$(cat "$IP_CACHE" 2>/dev/null)
 OUT1="${LIGHT}"
 OUT1="$OUT1${ORANGE}${MODEL}"
 [ -n "$EFFORT" ] && OUT1="$OUT1 - ${EFFORT}"
-[ -n "$SESSION_ID" ] && OUT1="$OUT1 ${LIGHT}🔑 ${SESSION_ID:0:8}"
+[ -n "$SESSION_ID" ] && OUT1="$OUT1 ${LIGHT}🔑 ${SESSION_ID}"
 OUT1="$OUT1${LIGHT}"
 if [ -n "$USERNAME" ] || [ -n "$PUBLIC_IP" ]; then
   OUT1="${OUT1}${SEP}"
